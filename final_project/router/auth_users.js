@@ -1,4 +1,5 @@
 const express = require('express');
+const session = require('express-session');
 const jwt = require('jsonwebtoken');
 let books = require("./booksdb.js");
 const regd_users = express.Router();
@@ -44,6 +45,7 @@ regd_users.post("/login", (req,res) => {
         req.session.authorization = {
             accessToken,username
         }
+        session.username = username;
         return res.status(200).send("User successfully logged in");
     } else {
         return res.status(208).json({message: "Invalid Login. Check username and password"});
@@ -53,9 +55,54 @@ regd_users.post("/login", (req,res) => {
 
 // Add a book review
 regd_users.put("/auth/review/:isbn", (req, res) => {
-    
+    const isbn = req.params.isbn;
+    let book = books[isbn];
+    if (book){
+
+        let reviews = book["reviews"];
+
+        if (reviews){
+
+                if (reviews[session.username]){
+                    reviews["review"] = req.body.review;
+                    
+                }
+                else{
+                    reviews[session.username] = {
+                        "review" : req.body.review
+                    }
+                }  
+
+            book["reviews"] = reviews;
+        }
+    }
+
+    books[isbn] = book;
+
+    res.send(`Book with the ISBN  ${isbn} updated.`);
 
 });
+
+regd_users.delete("/auth/review/delete/:isbn", (req, res) => {
+    const isbn = req.params.isbn;
+    let book = books[isbn];
+    if (book){
+
+        let reviews = book["reviews"];
+
+        if (reviews){
+                if (reviews[session.username]){
+                    delete reviews[session.username];
+                    res.send(`Review of the book ${isbn} deleted.`)
+
+                }
+            
+            book["review"] = reviews;
+        }
+        books[isbn] = book;
+    }
+
+})
 
 
 module.exports.authenticated = regd_users;
